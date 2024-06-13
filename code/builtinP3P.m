@@ -1,11 +1,11 @@
-function A = builtinP3P(imagePts_vert, worldPts_vert, focalLngth, principalPnt, imageSize, estTranslationVec, estRotationMat, plotCamera)
+function A = builtinP3P(imagePts_vert, worldPts_vert, focalLngth, principalPnt, imageSize, estTranslationVec, estRotationMat, camPlot)
     
     intr = cameraIntrinsics(focalLngth, principalPnt, imageSize)
 
     worldPose = estworldpose(imagePts_vert, worldPts_vert, intr)
     A = worldPose.A;
 
-    if plotCamera ==1
+    if camPlot == 1
         figure;
         pcshow(worldPts_vert,VerticalAxis="Y",VerticalAxisDir="down", ...
         MarkerSize=30);

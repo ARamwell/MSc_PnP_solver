@@ -2,34 +2,45 @@
 
 %Perform P3P on a prerecorded video of a checkerboard
 
-%Initialise variables
+%Initialise trajectory variables
 t_hist_cust = zeros(3,1); %trajectory history, in the form of translation vector
 t_hist_builtin = zeros(3,1);
 
+%Initialise camera variables
+K = [1274.58238813250 0 627.693937913345; 0 1273.36371905619 405.441250468717; 0 0 1];
+
+%Initialise targets (checkerboard)
+checkerSize = [7, 10]; %number of squares
+checkerSquareLength = 23; %mm
+
+%Initialise world map
+X_pnts_w = calcCheckerEdgeCoords_w(checkerSize, checkerSquareLength);
+
+
 %Initialise trajectory plot
-%figure;
+close all
 trajPlotFig = figure(); 
-trajPlotAx = axes('Parent', trajPlotFig);%'XLim', [-5000, 5000], 'YLim', [-5000, 5000], 'ZLim', [0, 5000]);%, 'XLabel', 'x (mm)', 'YLabel', 'y (mm)','ZLabel', 'z (mm)');
-
-%trajPlot = plot3(t_hist_cust(1,:), t_hist_cust(2,:), t_hist_cust(3,:));
-
-%plot3(trajPlotAx, [],[],[]);
-xlim(trajPlotAx, [-5000, 5000]);
-ylim(trajPlotAx,[-5000, 5000]);
-zlim(trajPlotAx,[0, 5000]);
+trajPlotAx = axes('Parent', trajPlotFig);
+xlim(trajPlotAx, [-500, 500]);
+ylim(trajPlotAx,[-500, 500]);
+zlim(trajPlotAx,[-500, 500]);
+set(trajPlotAx, 'Ydir', 'reverse', 'Zdir', 'reverse');
 view(trajPlotAx, 3);
-%hold on
-%xlabel('x (mm)');
-%ylabel('y (mm)');
-%zlabel('z (mm)');
-hold on
-trajPlot = plot3(trajPlotAx,[1000],[1000],[1000], '-or');
-%linkdata(trajPlotFig, 'on');
-x =[1000 2000];
-y = [1000 2000];
-z=[1000 1000];
-set(trajPlot, 'XData', x, 'YData', y, 'ZData', z);
-drawnow
+grid(trajPlotAx, 'on');
+hold (trajPlotAx, 'on');
+trajPlotCust = plot3(trajPlotAx,t_hist_cust(1,:),t_hist_cust(2,:),t_hist_cust(3,:), '-or');
+trajPlotBuiltin = plot3(trajPlotAx,t_hist_builtin(1,:),t_hist_builtin(2,:),t_hist_builtin(3,:), '-og');
+%Camera axes
+camXPlotCust = plot3(trajPlotAx, [0 100], [0 0], [0 0], '-r');
+camYPlotCust = plot3(trajPlotAx, [0 0], [0 100], [0 0], '-r');
+camZPlotCust = plot3(trajPlotAx, [0 0], [0 0], [0 100], '-r');
+camXPlotBuiltin = plot3(trajPlotAx, [0 100], [0 0], [0 0], '-g');
+camYPlotBuiltin = plot3(trajPlotAx, [0 0], [0 100], [0 0], '-g');
+camZPlotBuiltin = plot3(trajPlotAx, [0 0], [0 0], [0 100], '-g');
+
+%Insert checkerboard
+scatter3(trajPlotAx,X_pnts_w(:,1), X_pnts_w(:,2),X_pnts_w(:,3), 4, "black", "filled");
+
 %Locate video
 files_ds = fileDatastore(fullfile(uigetdir), 'ReadFcn', @importdata, "FileExtensions",".jpg");
 allFileNames = files_ds.Files;
@@ -59,10 +70,7 @@ mdl = "P3P_Grunert";
 open_system(mdl);
 simIn = Simulink.SimulationInput(mdl);
 
-%Set parameters
-checkerSize = [7, 10]; %number of squares
-checkerSquareLength = 23; %mm
-K = [1274.58238813250 0 627.693937913345; 0 1273.36371905619 405.441250468717; 0 0 1];
+
 
 set_param(mdl,"FastRestart","on")
 
@@ -79,30 +87,65 @@ for q=1:numFrames
     out = sim(simIn);
     
     %Load new augmented Rt matrix results
-    Rt_new_cust = out.simout(:,:,1);
-    Rt_new_builtin = out.simout(:,:,2);
+    R_new_cust = out.simout(1:3,1:3,1);
+    t_new_cust = out.simout(1:3,4,1);
+    R_new_builtin = out.simout(1:3,1:3,2);
+    t_new_builtin = out.simout(1:3,4,2);
 
     %Add new results to trajectory history
     if q == 1
-        t_hist_cust = Rt_new_cust(1:3,4);
-        t_hist_builtin = Rt_new_cust(1:3,4);
+        t_hist_cust = t_new_cust;
+        t_hist_builtin = t_new_builtin;
     else
-        t_hist_cust = cat(2, t_hist_cust, Rt_new_cust(1:3,4));
-        t_hist_builtin = cat(2, t_hist_builtin, Rt_new_builtin(1:3,4));
+        t_hist_cust = cat(2, t_hist_cust, t_new_cust);
+        t_hist_builtin = cat(2, t_hist_builtin, t_new_builtin);
     end
 
 
-    %Plot result
-    drawnow
+    %Plot new trajectory history
+    set(trajPlotCust, 'XData', t_hist_cust(1,:), 'YData',t_hist_cust(2,:), 'ZData', t_hist_cust(3,:));
+    set(trajPlotBuiltin, 'XData', t_hist_builtin(1,:), 'YData',t_hist_builtin(2,:), 'ZData', t_hist_builtin(3,:));
+    
+    %Plot new camera axes
+    %Custom algorithm
+    cam_xAxis_cust = cat(2, t_new_cust, (t_new_cust + (R_new_cust * [100;0;0])));
+    cam_yAxis_cust = cat(2, t_new_cust, (t_new_cust + (R_new_cust * [0;100;0])));
+    cam_zAxis_cust = cat(2, t_new_cust, (t_new_cust + (R_new_cust * [0;0;100])));
+    set(camXPlotCust, 'XData', cam_xAxis_cust(1,:), 'YData',cam_xAxis_cust(2,:), 'ZData', cam_xAxis_cust(3,:));
+    set(camYPlotCust, 'XData', cam_yAxis_cust(1,:), 'YData',cam_yAxis_cust(2,:), 'ZData', cam_yAxis_cust(3,:));
+    set(camZPlotCust, 'XData', cam_zAxis_cust(1,:), 'YData',cam_zAxis_cust(2,:), 'ZData', cam_zAxis_cust(3,:));
+    %Builtin algorithm
+    cam_xAxis_builtin = cat(2, t_new_builtin, (t_new_builtin + (R_new_builtin * [100;0;0])));
+    cam_yAxis_builtin = cat(2, t_new_builtin, (t_new_builtin + (R_new_builtin * [0;100;0])));
+    cam_zAxis_builtin = cat(2, t_new_builtin, (t_new_builtin + (R_new_builtin * [0;0;100])));
+    set(camXPlotBuiltin, 'XData', cam_xAxis_builtin(1,:), 'YData',cam_xAxis_builtin(2,:), 'ZData', cam_xAxis_builtin(3,:));
+    set(camYPlotBuiltin, 'XData', cam_yAxis_builtin(1,:), 'YData',cam_yAxis_builtin(2,:), 'ZData', cam_yAxis_builtin(3,:));
+    set(camZPlotBuiltin, 'XData', cam_zAxis_builtin(1,:), 'YData',cam_zAxis_builtin(2,:), 'ZData', cam_zAxis_builtin(3,:));
 
+    drawnow
 
 
 end
 
-figure
-trajScatter = scatter3(t_hist_cust(1,:), t_hist_cust(2,:), t_hist_cust(3,:))
 
 
 
-   
+function X_pts_w = calcCheckerEdgeCoords_w(checkerSize, squareEdgeLength)
+    
+    boardWidth = checkerSize(2);
+    boardHeight = checkerSize(1);
+    X_pts_w = zeros((boardWidth-1)*(boardHeight-1), 3);
+
+    %for each column
+    for c=1 : boardWidth-1
+        for r = 1: boardHeight-1
+            x = (c-1)*squareEdgeLength;
+            y = (r-1)*squareEdgeLength;
+            z = 0;
+            X_pts_w(  (((c-1)*(boardHeight-1)) + r), 1) = x;
+            X_pts_w(  (((c-1)*(boardHeight-1)) + r), 2) = y;
+            X_pts_w(  (((c-1)*(boardHeight-1)) + r), 3) = z;
+        end
+    end
+end
 
