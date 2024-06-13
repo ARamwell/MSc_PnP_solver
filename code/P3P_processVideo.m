@@ -20,23 +20,30 @@ X_pnts_w = calcCheckerEdgeCoords_w(checkerSize, checkerSquareLength);
 %Initialise trajectory plot
 close all
 trajPlotFig = figure(); 
-trajPlotAx = axes('Parent', trajPlotFig);
+trajPlotAx = axes('Parent', trajPlotFig)%, 'XLabel','x (mm)', 'YLabel', 'y (mm)', 'ZLabel', 'z (mm)');
 xlim(trajPlotAx, [-500, 500]);
 ylim(trajPlotAx,[-500, 500]);
 zlim(trajPlotAx,[-500, 500]);
+xlabel(trajPlotAx, 'x (mm)');
+ylabel(trajPlotAx, 'y (mm)');
+zlabel(trajPlotAx, 'z (mm)');
 set(trajPlotAx, 'Ydir', 'reverse', 'Zdir', 'reverse');
 view(trajPlotAx, 3);
 grid(trajPlotAx, 'on');
 hold (trajPlotAx, 'on');
-trajPlotCust = plot3(trajPlotAx,t_hist_cust(1,:),t_hist_cust(2,:),t_hist_cust(3,:), '-or');
-trajPlotBuiltin = plot3(trajPlotAx,t_hist_builtin(1,:),t_hist_builtin(2,:),t_hist_builtin(3,:), '-og');
+trajPlotCust = plot3(trajPlotAx,[0],[0],[0], '-or');
+trajPlotBuiltin = plot3(trajPlotAx,[0],[0],[0], '-og');
 %Camera axes
 camXPlotCust = plot3(trajPlotAx, [0 100], [0 0], [0 0], '-r');
 camYPlotCust = plot3(trajPlotAx, [0 0], [0 100], [0 0], '-r');
 camZPlotCust = plot3(trajPlotAx, [0 0], [0 0], [0 100], '-r');
+
 camXPlotBuiltin = plot3(trajPlotAx, [0 100], [0 0], [0 0], '-g');
 camYPlotBuiltin = plot3(trajPlotAx, [0 0], [0 100], [0 0], '-g');
 camZPlotBuiltin = plot3(trajPlotAx, [0 0], [0 0], [0 100], '-g');
+camXLabelBuiltin = text(trajPlotAx, 100,0, 0, 'x');
+camYLabelBuiltin=text(trajPlotAx, 0, 100,0, 'y');
+camZLabelBuiltin=text(trajPlotAx, 0, 0, 1, 'z');
 
 %Insert checkerboard
 scatter3(trajPlotAx,X_pnts_w(:,1), X_pnts_w(:,2),X_pnts_w(:,3), 4, "black", "filled");
@@ -101,7 +108,6 @@ for q=1:numFrames
         t_hist_builtin = cat(2, t_hist_builtin, t_new_builtin);
     end
 
-
     %Plot new trajectory history
     set(trajPlotCust, 'XData', t_hist_cust(1,:), 'YData',t_hist_cust(2,:), 'ZData', t_hist_cust(3,:));
     set(trajPlotBuiltin, 'XData', t_hist_builtin(1,:), 'YData',t_hist_builtin(2,:), 'ZData', t_hist_builtin(3,:));
@@ -114,6 +120,7 @@ for q=1:numFrames
     set(camXPlotCust, 'XData', cam_xAxis_cust(1,:), 'YData',cam_xAxis_cust(2,:), 'ZData', cam_xAxis_cust(3,:));
     set(camYPlotCust, 'XData', cam_yAxis_cust(1,:), 'YData',cam_yAxis_cust(2,:), 'ZData', cam_yAxis_cust(3,:));
     set(camZPlotCust, 'XData', cam_zAxis_cust(1,:), 'YData',cam_zAxis_cust(2,:), 'ZData', cam_zAxis_cust(3,:));
+    
     %Builtin algorithm
     cam_xAxis_builtin = cat(2, t_new_builtin, (t_new_builtin + (R_new_builtin * [100;0;0])));
     cam_yAxis_builtin = cat(2, t_new_builtin, (t_new_builtin + (R_new_builtin * [0;100;0])));
@@ -121,12 +128,17 @@ for q=1:numFrames
     set(camXPlotBuiltin, 'XData', cam_xAxis_builtin(1,:), 'YData',cam_xAxis_builtin(2,:), 'ZData', cam_xAxis_builtin(3,:));
     set(camYPlotBuiltin, 'XData', cam_yAxis_builtin(1,:), 'YData',cam_yAxis_builtin(2,:), 'ZData', cam_yAxis_builtin(3,:));
     set(camZPlotBuiltin, 'XData', cam_zAxis_builtin(1,:), 'YData',cam_zAxis_builtin(2,:), 'ZData', cam_zAxis_builtin(3,:));
+    delete(camXLabelBuiltin);
+    delete(camYLabelBuiltin);
+    delete(camZLabelBuiltin);
+    camXLabelBuiltin = text(trajPlotAx, cam_xAxis_builtin(1,2), cam_xAxis_builtin(2,2), cam_xAxis_builtin(3,2), 'x');
+    camYLabelBuiltin =text(trajPlotAx, cam_yAxis_builtin(1,2), cam_yAxis_builtin(2,2), cam_yAxis_builtin(3,2), 'y');
+    camZLabelBuiltin =text(trajPlotAx, cam_zAxis_builtin(1,2), cam_zAxis_builtin(2,2), cam_zAxis_builtin(3,2), 'z');
 
     drawnow
 
 
 end
-
 
 
 
