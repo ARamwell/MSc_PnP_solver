@@ -2,7 +2,7 @@ function A = builtinP3P(imagePts_vert, worldPts_vert, focalLngth, principalPnt, 
     
     intr = cameraIntrinsics(focalLngth, principalPnt, imageSize);
 
-    worldPose = estworldpose(imagePts_vert, worldPts_vert, intr);
+    worldPose = estworldpose(imagePts_vert, worldPts_vert, intr, 'MaxReprojectionError', 0.2);
     A = worldPose.A;
 
     if camPlot == 1

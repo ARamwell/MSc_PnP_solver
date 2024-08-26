@@ -4,7 +4,7 @@
 
 %Some options
 importVideo = false;
-useVerificationData = true;
+useVerificationData =true;
 runP3P = true;
 startTime = 0.5; %seconds
 %startTimeStep = 2;    %seconds
@@ -28,8 +28,7 @@ X_pnts_w = calcCheckerEdgeCoords_w(checkerSize, checkerSquareLength);
 %% Initialise trajectory variables
 t_hist_cust = zeros(3,1); %trajectory history, in the form of translation vector
 t_hist_builtin = zeros(3,1);
-t_hist_cust_LH = zeros(3,1); %trajectory history, in the form of translation vector
-t_hist_builtin_LH = zeros(3,1);
+
 
 %% Import verification data 
 if useVerificationData
@@ -53,8 +52,10 @@ if useVerificationData
         t_verif = transpose(verificationData.out.camPose.signals.values(1,1:3, t));
         %Convert from m to mm
         t_verif = t_verif * 1000;
-        %invert y axis - convert to RH rule system
-        t_verif(2)=-t_verif(2);
+        %Convert to board coordinate system
+        %R_unreal2board = [1 0 0; 0 -1 0; 0 0 -1];
+        R_unreal2World = [-1 0 0; 0 -1 0; 0 0 1];
+        t_verif=R_unreal2World * t_verif;
         
         if t == startTimeStep
             t_hist_verif = t_verif;
@@ -76,14 +77,14 @@ end
 %% Initialise trajectory plot
 close all
 trajPlotFig = figure(); 
-trajPlotAx = axes('Parent', trajPlotFig)%, 'XLabel','x (mm)', 'YLabel', 'y (mm)', 'ZLabel', 'z (mm)');
+trajPlotAx = axes('Parent', trajPlotFig);%, 'XLabel','x (mm)', 'YLabel', 'y (mm)', 'ZLabel', 'z (mm)');
 xlim(trajPlotAx, [-500, 500]);
 ylim(trajPlotAx,[-500, 500]);
 zlim(trajPlotAx,[0, 1500]);
 xlabel(trajPlotAx, 'x (mm)');
 ylabel(trajPlotAx, 'y (mm)');
 zlabel(trajPlotAx, 'z (mm)');
-set(trajPlotAx, 'Xdir', 'reverse', 'Ydir', 'reverse');
+%set(trajPlotAx, 'Ydir', 'reverse');
 view(trajPlotAx, 3);
 grid(trajPlotAx, 'on');
 hold (trajPlotAx, 'on');
@@ -115,7 +116,7 @@ if useVerificationData
 end
 
 %Insert legend
-legend([trajPlotCust trajPlotBuiltin trajPlotVerif],'Camera pose (custom)','Camera pose (built-in)', 'Camera pose (logged)') 
+% legend([trajPlotCust trajPlotBuiltin trajPlotVerif],'Camera pose (custom)','Camera pose (built-in)', 'Camera pose (logged)') 
 
 
 %% Import video
@@ -177,7 +178,8 @@ if runP3P
     
     else
         %Import series of images
-        files_ds = fileDatastore(fullfile(uigetdir(matlabroot,'Select a folder containing only the required stills')), 'ReadFcn', @importdata, "FileExtensions",".jpg");
+        % files_ds = fileDatastore(fullfile(uigetdir(matlabroot,'Select a folder containing only the required stills')), 'ReadFcn', @importdata, "FileExtensions",".jpg");
+        files_ds = fileDatastore("C:\Users\alyss\OneDrive - University of Cape Town\Sandbox\PnP\Verification\Few\Left", 'ReadFcn', @importdata, "FileExtensions",".jpg");
         allFileNames = files_ds.Files;
         numFiles = length(allFileNames);
         numFramesTotal = numFiles;
@@ -208,13 +210,13 @@ if runP3P
     %%%%%%%%Do P3P!
     
     %Initialise sim
-    mdl = "P3P_Grunert";
-    open_system(mdl);
-    simIn = Simulink.SimulationInput(mdl);
+    %mdl = "P3P_Grunert";
+    %open_system(mdl);
+    %simIn = Simulink.SimulationInput(mdl);
     
     
     
-    set_param(mdl,"FastRestart","on")
+    %set_param(mdl,"FastRestart","on")
 
 end
 
@@ -225,6 +227,7 @@ for q=1:numFramesToProcess
     if runP3P
         %Extract current frame
         I_current = I_allFrames(:,:,q);
+        imageSize = size(I_current);
         
         disp(strcat("Working on frame ", string(q)));
     
@@ -232,25 +235,30 @@ for q=1:numFramesToProcess
         [x_pnts_i, checkerSize_detected] = detectCheckerboardPoints(I_current);
         x_pnts_i = round(x_pnts_i);
         
+
+        
         
         if checkerSize_detected == checkerSize
-            %Run simulation
-            out = sim(simIn);
-        
-            
-            %Load new augmented Rt matrix results
-            R_new_cust = out.simout(1:3,1:3,1);
-            t_new_cust = out.simout(1:3,4,1);
-            R_new_builtin = out.simout(1:3,1:3,2);
-            t_new_builtin = out.simout(1:3,4,2);
 
-            %Fix coordinates
-            R_LH = [1 0 0; 0 1 0; 0 0 1];
-            R_new_builtin_LH  = R_LH * R_new_builtin;
-            R_new_cust_LH  = R_LH * R_new_cust;
-            t_new_cust_LH = R_LH *t_new_cust;
-            t_new_builtin_LH = R_LH *t_new_builtin;
-        
+            %[x_ABCD_i, X_ABCD_W] = p3pFuncs.checkerOuterCornerSelector(x_pnts_i, X_pnts_w, checkerSize(1), checkerSize(2));
+
+            %%Run simulation
+            %out = sim(simIn);
+            Rt_Cust = (p3pRun.KneipA(transpose(x_pnts_i), transpose(X_pnts_w), K, checkerSize));
+            Rt_Mat = p3pRun.MatlabPnP(K, x_pnts_i, X_pnts_w, imageSize, 0.2);
+
+            %Load new augmented Rt matrix results
+            % R_new_cust = out.simout(1:3,1:3,1);
+            % t_new_cust = out.simout(1:3,4,1);
+            % R_new_builtin = out.simout(1:3,1:3,2);
+            % t_new_builtin = out.simout(1:3,4,2);
+            R_new_cust = Rt_Cust(:,1:3);
+            t_new_cust = Rt_Cust(:,4);
+            R_new_builtin = Rt_Mat(:,1:3);
+            t_new_builtin = Rt_Mat(:,4);
+            
+            
+
             %Add new results to trajectory history
             if q == 1
                 t_hist_cust = t_new_cust;
@@ -259,14 +267,6 @@ for q=1:numFramesToProcess
                 t_hist_cust = cat(2, t_hist_cust, t_new_cust);
                 t_hist_builtin = cat(2, t_hist_builtin, t_new_builtin);
             end
-
-            if q == 1
-                t_hist_cust_LH = t_new_cust_LH;
-                t_hist_builtin_LH = t_new_builtin_LH;
-            else
-                t_hist_cust_LH = cat(2, t_hist_cust_LH, t_new_cust_LH);
-                t_hist_builtin_LH = cat(2, t_hist_builtin_LH, t_new_builtin_LH);
-            end
         
         
 
@@ -274,22 +274,23 @@ for q=1:numFramesToProcess
 
     
             %Plot new trajectory history
-            set(trajPlotCust, 'XData', t_hist_cust_LH(1,:), 'YData',t_hist_cust_LH(2,:), 'ZData', t_hist_cust_LH(3,:));
-            set(trajPlotBuiltin, 'XData', t_hist_builtin_LH(1,:), 'YData',t_hist_builtin_LH(2,:), 'ZData', t_hist_builtin_LH(3,:));
+            ryPlot(trajPlotCust, camXPlotCust, camXLabelBuiltin)
+            set(trajPlotCust, 'XData', t_hist_cust(1,:), 'YData',t_hist_cust(2,:), 'ZData', t_hist_cust(3,:));
+            set(trajPlotBuiltin, 'XData', t_hist_builtin(1,:), 'YData',t_hist_builtin(2,:), 'ZData', t_hist_builtin(3,:));
             
             %Plot new camera axes
             %Custom algorithm
-            cam_xAxis_cust = cat(2, t_new_cust_LH, (t_new_cust_LH + (R_new_cust_LH * [100;0;0])));
-            cam_yAxis_cust = cat(2, t_new_cust_LH, (t_new_cust_LH + (R_new_cust_LH * [0;100;0])));
-            cam_zAxis_cust = cat(2, t_new_cust_LH, (t_new_cust_LH + (R_new_cust_LH * [0;0;100])));
+            cam_xAxis_cust = cat(2, t_new_cust, (t_new_cust + (R_new_cust * [100;0;0])));
+            cam_yAxis_cust = cat(2, t_new_cust, (t_new_cust + (R_new_cust * [0;100;0])));
+            cam_zAxis_cust = cat(2, t_new_cust, (t_new_cust + (R_new_cust * [0;0;100])));
             set(camXPlotCust, 'XData', cam_xAxis_cust(1,:), 'YData',cam_xAxis_cust(2,:), 'ZData', cam_xAxis_cust(3,:));
             set(camYPlotCust, 'XData', cam_yAxis_cust(1,:), 'YData',cam_yAxis_cust(2,:), 'ZData', cam_yAxis_cust(3,:));
             set(camZPlotCust, 'XData', cam_zAxis_cust(1,:), 'YData',cam_zAxis_cust(2,:), 'ZData', cam_zAxis_cust(3,:));
             
             %Builtin algorithm
-            cam_xAxis_builtin = cat(2, t_new_builtin_LH, (t_new_builtin_LH + (R_new_builtin_LH * [100;0;0])));
-            cam_yAxis_builtin = cat(2, t_new_builtin_LH, (t_new_builtin_LH + (R_new_builtin_LH * [0;100;0])));
-            cam_zAxis_builtin = cat(2, t_new_builtin_LH, (t_new_builtin_LH + (R_new_builtin_LH * [0;0;100])));
+            cam_xAxis_builtin = cat(2, t_new_builtin, (t_new_builtin + (R_new_builtin * [100;0;0])));
+            cam_yAxis_builtin = cat(2, t_new_builtin, (t_new_builtin + (R_new_builtin * [0;100;0])));
+            cam_zAxis_builtin = cat(2, t_new_builtin, (t_new_builtin + (R_new_builtin * [0;0;100])));
             set(camXPlotBuiltin, 'XData', cam_xAxis_builtin(1,:), 'YData',cam_xAxis_builtin(2,:), 'ZData', cam_xAxis_builtin(3,:));
             set(camYPlotBuiltin, 'XData', cam_yAxis_builtin(1,:), 'YData',cam_yAxis_builtin(2,:), 'ZData', cam_yAxis_builtin(3,:));
             set(camZPlotBuiltin, 'XData', cam_zAxis_builtin(1,:), 'YData',cam_zAxis_builtin(2,:), 'ZData', cam_zAxis_builtin(3,:));
@@ -321,17 +322,43 @@ function X_pts_w = calcCheckerEdgeCoords_w(checkerSize, squareEdgeLength)
     boardWidth = checkerSize(2);
     boardHeight = checkerSize(1);
     X_pts_w = zeros((boardWidth-1)*(boardHeight-1), 3);
+    X_pts_b = zeros((boardWidth-1)*(boardHeight-1), 3);
+
+    R_board2World = [1 0 0; 0 -1 0; 0 0 -1];
 
     %for each column
     for c=1 : boardWidth-1
         for r = 1: boardHeight-1
-            x = -(c-1)*squareEdgeLength;
+            x = (c-1)*squareEdgeLength;
             y = (r-1)*squareEdgeLength;
             z = 0;
-            X_pts_w(  (((c-1)*(boardHeight-1)) + r), 1) = x;
-            X_pts_w(  (((c-1)*(boardHeight-1)) + r), 2) = y;
-            X_pts_w(  (((c-1)*(boardHeight-1)) + r), 3) = z;
+            X_pts_b(  (((c-1)*(boardHeight-1)) + r), 1) = x;
+            X_pts_b(  (((c-1)*(boardHeight-1)) + r), 2) = y;
+            X_pts_b(  (((c-1)*(boardHeight-1)) + r), 3) = z;
         end
     end
+
+    X_pts_w = transpose(R_board2World * transpose(X_pts_b));
+    
 end
+
+%Function below not used
+% function [bodyXLabel, bodyYLabel, bodyZLabel] = updateTraj(updatedTrajHist, updatedR, parentAx, targetPlot, bodyXPlot, bodyYPlot, bodyZPlot, bodyXLabel, bodyYLabel, bodyZLabel)
+% 
+%     set(targetPlot, 'XData', updatedTrajHist(1,:), 'YData', updatedTrajHist(2,:), 'ZData', updatedTrajHist(3,:));
+%     body_xAxis = cat(2, updatedTrajHist, (updatedTrajHist + (updatedR * [100;0;0])));
+%     body_yAxis = cat(2, updatedTrajHist, (updatedTrajHist + (updatedR * [0;100;0])));
+%     body_zAxis = cat(2, updatedTrajHist, (updatedTrajHist + (updatedR * [0;0;100])));
+%     set(bodyXPlot, 'XData', body_xAxis(1,:), 'YData', body_xAxis(2,:), 'ZData', body_xAxis(3,:));
+%     set(bodyYPlot, 'XData', body_yAxis(1,:), 'YData',body_yAxis(2,:), 'ZData', body_yAxis(3,:));
+%     set(bodyZPlot, 'XData', body_zAxis(1,:), 'YData',body_zAxis(2,:), 'ZData', body_zAxis(3,:));
+%     delete(bodyXLabel);
+%     delete(bodyYLabel);
+%     delete(bodyZLabel);
+%     bodyXLabel = text(parentAx, body_xAxis(1,2), body_xAxis(2,2), body_xAxis(3,2), 'x');
+%     bodyYLabel =text(parentAx, body_yAxis(1,2), body_yAxis(2,2), body_yAxis(3,2), 'y');
+%     bodyZLabel =text(parentAx, body_zAxis(1,2), body_zAxis(2,2), body_zAxis(3,2), 'z');
+%     drawnow;
+% 
+% end
 
