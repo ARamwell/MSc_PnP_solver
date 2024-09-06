@@ -60,9 +60,6 @@ classdef p3pPlotting
 
         function updateTraj(lineObj, arr_axTextObj, arr_axLineObj, rtHist)
 
-
-            
-
             tHist_x(:) =rtHist(1,4,:);
             tHist_y(:) =rtHist(2,4,:);
             tHist_z(:) =rtHist(3,4,:);

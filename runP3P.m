@@ -1,0 +1,67 @@
+function [results, flags] = runP3P(imagePnts, worldPnts, K, imageSize, squareSize, varargin)
+
+    %This function runs the p3p method (or methods) of choice and returns
+    %the resulting Rt matrix and reprojection error of each method inside a
+    %struct.
+
+    %inputs: 
+    %           imagePnts :     (n x 2) matrix (i.e. column vectors) of the
+    %                           coordinates of detected points in the image
+    %           worldPnts :     (n x 3) matrix (i.e. column vectors) of the
+    %                           coordinates of the detected points in the
+    %                           world frame. Columns match with imagePnts.
+    %           varargin :      list of methods to use, as strings
+    %                           separated by commas
+
+    %outputs:
+    %           results:        struct of Rt matrix results
+
+    %% Initalisations
+    %Define a list of valid method names
+    validMethods = {'Gao', 'KneipA', 'KneipO', 'KneipN','Grunert', 'Matlab'}; %if you add to this, you must also add a switch case
+    
+    %Initialise output struct
+    results = struct();
+
+    %Initalise flag to track invalid methods
+    invalidMethodsFlag = false;
+    validMethodUsed = false;
+
+    %% Main
+    %Loop over the input string (varargin, names of methods to be run)
+    for i = 1:length(varargin)
+
+        methodName = varargin{i}; %get current method name
+
+        if any(strcmp(methodName, validMethods)) %if methodName is valid
+            % Valid method: call it and store the result in the struct
+            
+            switch methodName
+                case 'Gao'
+                    %results.(methodName).Rt = method1(currentInput);
+                case 'KneipA'
+                    results.(methodName).Rt = p3pRun.KneipA(imagePnts, worldPnts, K, squareSize);
+                case 'KneipN'
+                    results.(methodName).Rt = p3pRun.KneipN(imagePnts, worldPnts, K, squareSize);
+                case 'KneipO'
+                    results.(methodName).Rt = p3pRun.KneipO(imagePnts, worldPnts, K, squareSize);
+                case 'Grunert'
+                    results.(methodName).Rt = p3pRun.Grunert(imagePnts, worldPnts, K, squareSize);
+                case 'Matlab'
+                    results.(methodName).Rt = p3pRun.MatlabPnP(K, imagePnts, worldPnts, imageSize, 0.1);
+            end
+            validMethodUsed = true;  % At least one valid method was used
+        
+        else
+            % Invalid method: set the flag and issue a warning
+            warning('Unknown method: %s. Skipping this method.', methodName);
+            invalidMethodsFlag = true;
+        end
+    end
+    
+    % If no valid methods were used, show a message
+    if ~validMethodUsed
+        warning('No valid methods were used.');
+    end
+
+end
