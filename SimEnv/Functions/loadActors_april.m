@@ -4,7 +4,7 @@ function loadActors_april(Actor, World)
 %   Detailed explanation goes here
 
     %Load .mat file
-    load('C:\Users\alyss\OneDrive - University of Cape Town\Sandbox\PnP\Pnp_solver\GitClone\Resources\mapObjects');
+    load('C:\Users\alyss\OneDrive - University of Cape Town\Sandbox\PnP\Pnp_solver\GitClone\Resources\map');
     
     %For each checkerboard defined in struct
     for i=1:size(worldObjectStruct.aprils, 2)

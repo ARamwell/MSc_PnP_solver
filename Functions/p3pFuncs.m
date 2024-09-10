@@ -347,8 +347,19 @@ classdef p3pFuncs
             [rotErr, posErr] = p3pFuncs.calcOrientError(Rt_act, Rt_calc);
 
             orientErrArr = [time; rotErr; posErr];
+        end
+
+        %------------------------------------------------------------%
 
 
+        function pose = rtToPose(Rt, rotOrder)
+            
+            pos = Rt(1:3,4);
+
+            orient = rotm2eul(Rt(1:3, 1:3), rotOrder);
+
+            pose = [pos; transpose(orient)];
+            
         end
 
     end

@@ -1,4 +1,4 @@
-function [results, flags] = runP3P(imagePnts, worldPnts, K, imageSize, squareSize, varargin)
+function [results, flags] = runP3P(results, time, imagePnts, worldPnts, K, imageSize, squareSize, varargin)
 
     %This function runs the p3p method (or methods) of choice and returns
     %the resulting Rt matrix and reprojection error of each method inside a
@@ -16,12 +16,16 @@ function [results, flags] = runP3P(imagePnts, worldPnts, K, imageSize, squareSiz
     %outputs:
     %           results:        struct of Rt matrix results
 
-    %% Initalisations
+    %% Initialisations
     %Define a list of valid method names
     validMethods = {'Gao', 'KneipA', 'KneipO', 'KneipN','Grunert', 'Matlab'}; %if you add to this, you must also add a switch case
+
+    %Check if 'prevResults' has any results in it
+    prevMethodNames = fieldnames(results);
+    newMethod =false;
     
     %Initialise output struct
-    results = struct();
+    %results = struct();
 
     %Initalise flag to track invalid methods
     invalidMethodsFlag = false;
@@ -40,17 +44,35 @@ function [results, flags] = runP3P(imagePnts, worldPnts, K, imageSize, squareSiz
                 case 'Gao'
                     %results.(methodName).Rt = method1(currentInput);
                 case 'KneipA'
-                    results.(methodName).Rt = p3pRun.KneipA(imagePnts, worldPnts, K, squareSize);
+                    Rt = p3pRun.KneipA(imagePnts, worldPnts, K, squareSize);
                 case 'KneipN'
-                    results.(methodName).Rt = p3pRun.KneipN(imagePnts, worldPnts, K, squareSize);
+                    Rt = p3pRun.KneipN(imagePnts, worldPnts, K, squareSize);
                 case 'KneipO'
-                    results.(methodName).Rt = p3pRun.KneipO(imagePnts, worldPnts, K, squareSize);
+                    Rt = p3pRun.KneipO(imagePnts, worldPnts, K, squareSize);
                 case 'Grunert'
-                    results.(methodName).Rt = p3pRun.Grunert(imagePnts, worldPnts, K, squareSize);
+                    Rt = p3pRun.Grunert(imagePnts, worldPnts, K, squareSize);
                 case 'Matlab'
-                    results.(methodName).Rt = p3pRun.MatlabPnP(K, imagePnts, worldPnts, imageSize, 0.1);
+                    Rt = p3pRun.MatlabPnP(K, imagePnts, worldPnts, imageSize, 0.1);
             end
+
+            if ~any(strcmp(methodName, prevMethodNames))
+                results.(methodName).Rt = [];
+                results.(methodName).time = [];
+                results.(methodName).pose = [];
+                results.(methodName).error = [];
+                newMethod = true;
+            end 
+
+            results.(methodName).Rt(1:3, 1:4, end+1) = Rt;
+            results.(methodName).time(1,end+1) = time;
+            results.(methodName).pose(1:6,end+1) = p3pFuncs.rtToPose(Rt, 'ZYX');
             validMethodUsed = true;  % At least one valid method was used
+
+            %for some reason, an extra Rt of zeros is added on the first
+            %iteration -remove these
+            if newMethod
+                results.(methodName).Rt = results.(methodName).Rt(:,:,2);
+            end
         
         else
             % Invalid method: set the flag and issue a warning

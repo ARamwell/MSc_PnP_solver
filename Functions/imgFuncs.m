@@ -2,7 +2,7 @@ classdef imgFuncs
     methods (Static)
 
         %------------------------------------------------------------%
-        function [rtHist, timeHist] = importSimLog(fullFile, R_sim2W)
+        function [rtHist, timeHist, poseHist] = importSimLog(fullFile, R_sim2W)
         %Basic function to import all logged trajectory data (as .m file). 
         %Does not consider time alignment with other data (i.e., imports 
         %all logged points, does not skip any)
@@ -12,13 +12,15 @@ classdef imgFuncs
 
             %Initialise output variables
             rtHist = zeros(3,4,numLogPoints-1);%-1 to skip t0
-            timeHist = zeros(1, (numLogPoints-1))
+            timeHist = zeros(1, (numLogPoints-1));
+            poseHist =zeros(6, (numLogPoints-1));
 
 
             %For each logged time - skip t0, where there is no data
             for i=2:numLogPoints
                 %Import time history
-                timeHist(1,(i-1)) = (simData.out.camPose.time(i,1));
+                time = simData.out.camPose.time(i,1);
+                timeHist(1,(i-1)) = time;
 
                 % Import position log
                 trans = transpose(simData.out.camPose.signals.values(1,1:3,i));
@@ -46,6 +48,7 @@ classdef imgFuncs
                 %build Rt history
                 rtHist(1:3,1:3,i-1) = R_W;
                 rtHist(1:3,4,i-1) = trans_W;
+                poseHist(:,i-1) = ([trans_W; yaw; pitch; roll]);
             end
         end
 

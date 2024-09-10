@@ -22,9 +22,10 @@ classdef checker < worldObject
             R_A2B = [1 0 0;
                      0 1 0;
                      0 0 -1];
-            t_A2B = [(squareSize*(checkerSize(2)-2)/2);
-                     (squareSize*(checkerSize(1)-2)/2);
-                      0];
+            %t_A2B = [(squareSize*(checkerSize(2)-2)/2);
+            %         (squareSize*(checkerSize(1)-2)/2);
+            %          0];
+            t_A2B = [0;0;0];
             Rt_A2B = [R_A2B t_A2B];
 
             % %Calculate external dimensions of board
@@ -112,12 +113,15 @@ classdef checker < worldObject
         
             R_B2W = Rt_B2W(1:3,1:3);
             t_B2W = Rt_B2W(1:3,4);
+
+            x_offset = ((boardWidth-2)*squareEdgeLength)/2;
+            y_offset = ((boardHeight-2)*squareEdgeLength)/2;
         
             %for each column
             for c=1 : boardWidth-1
                 for r = 1: boardHeight-1
-                    x = (c-1)*squareEdgeLength;
-                    y = (r-1)*squareEdgeLength;
+                    x = (c-1)*squareEdgeLength-x_offset;
+                    y = (r-1)*squareEdgeLength-y_offset;
                     z = -1;
                     X_pnts_B(1,  (((c-1)*(boardHeight-1)) + r)) = x;
                     X_pnts_B(2,  (((c-1)*(boardHeight-1)) + r)) = y;

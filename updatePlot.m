@@ -25,10 +25,14 @@ function plot_updated = updatePlot(plotIn, data)
                 for l = 1:length(linesToUpdate)
                     currentLine = linesToUpdate{l};
                     
+                    if any(strcmp(currentLine, 'Verification'))
+                        continue;
+                    end
                     %update trajectory data
-                    oldDataSeries = plotIn.plotLines.(currentLine).Data;
-                    newDataPnt = data.(currentLine).Rt;
-                    newDataSeries = cat(3, oldDataSeries, newDataPnt);
+                    %oldDataSeries = plotIn.plotLines.(currentLine).Data;
+                    %newDataPnt = data.(currentLine).Rt;
+                    %newDataSeries = cat(3, oldDataSeries, newDataPnt);
+                    newDataSeries = data.(currentLine).Rt;
                     plotIn.plotLines.(currentLine).Data = newDataSeries;
 
                     p3pPlotting.updateTraj(plotIn.plotLines.(currentLine).line, plotIn.plotLines.(currentLine).frameText, plotIn.plotLines.(currentLine).frameLines, newDataSeries);
